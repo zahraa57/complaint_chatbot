@@ -1,0 +1,13 @@
+# Ignore everything
+*
+
+# But not these files...
+!.gitignore
+!*.py
+!chatbot_app/
+!customerchatbot/
+!chatbot_app/management/
+!chatbot_app/management/commands/
+!chatbot_app/migrations/
+!requirements.txt
+!README.md
