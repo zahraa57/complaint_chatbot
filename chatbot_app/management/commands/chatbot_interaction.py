@@ -2,58 +2,77 @@
 import argparse
 import uuid
 from django.core.management.base import BaseCommand
-from transformers import T5ForConditionalGeneration, T5Tokenizer
+#from transformers import T5ForConditionalGeneration, T5Tokenizer
+from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
 
 from chatbot_app.models import Customer, ChatMessage, Complaint
+from django.core.exceptions import ValidationError
+
 
 class Command(BaseCommand):
     help = 'Interact with customers using a chatbot'
 
     def handle(self, *args, **options):
-        # Collect customer information
-        name = input("Enter your name: ")
-        phone_number = input("Enter your phone number:")
-        email = input("Enter your email address: ")
-        address = input("Enter your physical address: ")
-        # Save customer details to the database
-        customer = Customer.objects.create(name=name, phone_number=phone_number, email=email, address=address)
-        # Trigger model validation
-        
-        ## add try except to handel the error 
-        customer.full_clean()
 
+        while True:
+            # Get customer information
+            name = input("Enter customer name: ")
+            phone_number = input("Enter phone number: ")
+            email = input("Enter email address: ")
+            address = input("Enter customer address: ")
+
+            # Create a customer instance
+            customer = Customer(name=name, phone_number=phone_number, email=email, address=address)
+
+            try:
+                # Trigger model validation
+                customer.full_clean()
+                break  # Break the loop if validation succeeds
+            except ValidationError as e:
+                print(f"Validation error: {e}")
+                print("Please re-enter the information.")
+
+        # Save the instance to the database
         customer.save()
 
         # Initialize the T5 transformer
-        #tokenizer = T5Tokenizer.from_pretrained('google/flan-t5-xl')
-        #model = T5ForConditionalGeneration.from_pretrained('google/flan-t5-xl')
+        model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-small")
+        tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-small")
 
-        # Start the conversation
-        #conversation = f"Customer: {name}, Phone: {phone_number}, Email: {email}, Address: {address}\n"
 
-        # while True:
-        #     user_input = input("You: ")
-        #     if user_input.lower() == 'exit':
-        #         break
+        #create the interactive chat
+        conversation = ""
+        while True:
+            user_input=input("You: ")
+            if user_input.lower() == 'exit':
+               break
+            # Formulate the prompt with the summarization instruction
+            prompt = f"Answer the following question:\n{user_input}"
+            inputs = tokenizer(prompt, return_tensors="pt")
+            outputs = model.generate(**inputs,max_length=500)
+            chatbot_response=tokenizer.batch_decode(outputs, skip_special_tokens=True)
+            print(f"Chatbot: {chatbot_response}")
 
-        #     # Incorporate the user input into the conversation
-        #     #conversation += f"User: {user_input}\n"
+            conversation += f"User: {user_input}\n"
+            conversation += f"chatbot: {chatbot_response}\n"
 
-        #     # Generate a response using exit T5 transformer
-        #     inputs = tokenizer.encode(user_input, return_tensors='pt', max_length=512, truncation=True)
-        #     response = model.generate(inputs, max_length=100)
-        #     chatbot_response = tokenizer.decode(response[0], skip_special_tokens=True)
-        #     print(f"Chatbot: {chatbot_response}")
 
-        #     # Log the chat message
-        #     #ChatMessage.objects.create(customer=customer, message=user_input)
+        # Log the chat message
+        chat_message=ChatMessage.objects.create(customer=customer, message=conversation)
+        chat_message.save()
 
-        # # Generate a summary of the customer's problem
-        # complaint_summary = " ".join([message.message for message in customer.chatmessage_set.all()])
-        
-        # # Store the summary and generate a unique ID for tracking
-        # unique_id = uuid.uuid4()
-        # #Complaint.objects.create(customer=customer, summary=complaint_summary, unique_id=unique_id)
+        inputs = tokenizer("Summarize: "+conversation, return_tensors="pt")
+        outputs = model.generate(**inputs,max_length=500)
+        complaint_summary=tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        print(f"summary: {complaint_summary}")
+        # Store the summary and generate a unique ID for tracking
+        unique_id = uuid.uuid4()
+        complaint=Complaint.objects.create(customer=customer, summary=complaint_summary, unique_id=unique_id)
 
-        # # Display the unique ID to the customer
-        # print(f"Complaint successfully logged. Your unique ID is: {unique_id}")
+        # Display the unique ID to the customer
+        print(f"Complaint successfully logged. Your unique ID is: {unique_id}")
+        complaint.save()
+
+
+
