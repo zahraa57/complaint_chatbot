@@ -9,5 +9,6 @@
 !chatbot_app/management/
 !chatbot_app/management/commands/
 !chatbot_app/migrations/
+!chatbot_app/tests/
 !requirements.txt
 !README.md
