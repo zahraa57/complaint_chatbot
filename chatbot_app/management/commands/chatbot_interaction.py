@@ -3,10 +3,8 @@ import argparse
 import uuid
 from django.core.management.base import BaseCommand
 from transformers import T5ForConditionalGeneration, T5Tokenizer
-#from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from chatbot_app.models import Customer, ChatMessage, Complaint
 from django.core.exceptions import ValidationError
-
 
 class Command(BaseCommand):
     help = 'Interact with customers using a chatbot'
@@ -36,7 +34,7 @@ class Command(BaseCommand):
 
         # Initialize the T5 transformer
         model = T5ForConditionalGeneration.from_pretrained("google/flan-t5-small")
-        tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small",legacy=True)
+        tokenizer = T5Tokenizer.from_pretrained("google/flan-t5-small")
 
 
         #create the interactive chat
@@ -76,7 +74,7 @@ class Command(BaseCommand):
         chat_message.save()
         
         #Create the chat summary
-        inputs = tokenizer("Summarize: "+conversation, return_tensors="pt")
+        inputs = tokenizer("Summarize this chat by defining the main problem:\n "+conversation, return_tensors="pt")
         outputs = model.generate(**inputs,max_length=500)
         complaint_summary=tokenizer.batch_decode(outputs, skip_special_tokens=True)
         print(f"summary: {complaint_summary[0]}")
