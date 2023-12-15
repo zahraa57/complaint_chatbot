@@ -65,8 +65,4 @@ This CLI application provides a simple and efficient way to interact with custom
 - Django
 - Transformers library
 
-### Setup:
 
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
